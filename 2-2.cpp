@@ -122,3 +122,10 @@ int main() {
 
     return 0;
 }
+std::string removeComments(const std::string& line) {
+    size_t commentPos = line.find('%');
+    if (commentPos != std::string::npos) {
+        return line.substr(0, commentPos);
+    }
+    return line;
+}
