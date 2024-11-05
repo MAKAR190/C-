@@ -119,9 +119,10 @@ public:
     Konten<T> przed;
     Konten<T> po;
 
-    // Konstruktor domyślny
-    pomiary() {}
+    // Konstruktor domyślny z inicjalizacją kontenerów `przed` i `po` o domyślnym rozmiarze
+    pomiary() : przed(10), po(10) {}
 
+    // Konstruktor z określeniem rozmiaru
     pomiary(int rozmiar) : przed(rozmiar), po(rozmiar) {}
 };
 
