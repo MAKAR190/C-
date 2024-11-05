@@ -61,11 +61,19 @@ double randdouble() {
 }
 
 template <typename Iter1, typename Iter2>
-void Roznicuj(Iter1 i1, Iter1 i2, Iter2 i3) {
+void Roznicuj1(Iter1 i1, Iter1 i2, Iter2 i3) {
     while (i1 != i2) {
         *i1 = *i1 - *i3;
         ++i1;
         ++i3;
+    }
+}
+
+template <typename Iter, typename T>
+void Roznicuj2(Iter i1, Iter i2, T D) {
+    while (i1 != i2) {
+        *i1 = *i1 - D;
+        ++i1;
     }
 }
 
@@ -98,16 +106,31 @@ int main() {
         q.push(randdouble() * 10);  
     }
 
-    Roznicuj(p.begin(), p.end(), q.begin());
+    cout << "Zbiór p: ";
+    for (auto it = p.begin(); it != p.end(); ++it) cout << *it << " ";
+    cout << "\nZbiór q: ";
+    for (auto it = q.begin(); it != q.end(); ++it) cout << *it << " ";
+    cout << endl;
 
+    Roznicuj1(p.begin(), p.end(), q.begin());
+
+    double suma_roznic = 0;
+    Sumuj(p.begin(), p.end(), suma_roznic);
+
+    double D_bar = suma_roznic / n;
+    cout << "Średnia różnica (D̅): " << D_bar << endl;
+
+    Roznicuj2(p.begin(), p.end(), D_bar);
     DoKwadratu(p.begin(), p.end());
 
-    double suma = 0;
-    Sumuj(p.begin(), p.end(), suma);
+    double suma_kwadratow = 0;
+    Sumuj(p.begin(), p.end(), suma_kwadratow);
 
-    double dlugosc_wektora = sqrt(suma);
+    double S = sqrt(suma_kwadratow / (n - 1));
+    cout << "Odchylenie standardowe (S): " << S << endl;
 
-    cout << "Dlugosc wektora laczacego punkty p i q: " << dlugosc_wektora << endl;
+    double T = D_bar / (S / sqrt(n));
+    cout << "Wartość testu t Studenta (T): " << T << endl;
 
     return 0;
 }
