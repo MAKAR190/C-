@@ -7,15 +7,60 @@
 
 using namespace std;
 
-// Kontener klasy Konten
+// Szablon klasy Konten
 template <typename T>
 class Konten {
     T* dane;
     int pojemnosc;
     int szczyt;
+
 public:
     Konten(int maks_rozmiar) : pojemnosc(maks_rozmiar), szczyt(0) {
         dane = new T[pojemnosc];
+    }
+
+    // Konstruktor kopiujący
+    Konten(const Konten& inny) : pojemnosc(inny.pojemnosc), szczyt(inny.szczyt) {
+        dane = new T[pojemnosc];
+        for (int i = 0; i < szczyt; ++i) {
+            dane[i] = inny.dane[i];
+        }
+    }
+
+    // Konstruktor przenoszący
+    Konten(Konten&& inny) noexcept : dane(inny.dane), pojemnosc(inny.pojemnosc), szczyt(inny.szczyt) {
+        inny.dane = nullptr;
+        inny.pojemnosc = 0;
+        inny.szczyt = 0;
+    }
+
+    // Operator przypisania kopiującego
+    Konten& operator=(const Konten& inny) {
+        if (this == &inny) return *this;
+
+        delete[] dane;
+        pojemnosc = inny.pojemnosc;
+        szczyt = inny.szczyt;
+        dane = new T[pojemnosc];
+        for (int i = 0; i < szczyt; ++i) {
+            dane[i] = inny.dane[i];
+        }
+        return *this;
+    }
+
+    // Operator przypisania przenoszącego
+    Konten& operator=(Konten&& inny) noexcept {
+        if (this == &inny) return *this;
+
+        delete[] dane;
+        dane = inny.dane;
+        pojemnosc = inny.pojemnosc;
+        szczyt = inny.szczyt;
+
+        inny.dane = nullptr;
+        inny.pojemnosc = 0;
+        inny.szczyt = 0;
+        return *this;
     }
 
     ~Konten() {
@@ -28,7 +73,7 @@ public:
     }
 
     T usun() {
-        assert(szczyt > 0); 
+        assert(szczyt > 0);
         return dane[--szczyt];
     }
 
@@ -63,7 +108,7 @@ public:
     iterator koniec() { return iterator(*this, szczyt); }
 };
 
-// Klasa pomiary, przechowująca przed i po pomiary
+// Szablon klasy pomiary
 template <typename T>
 class pomiary {
 public:
@@ -73,87 +118,80 @@ public:
     pomiary(int rozmiar) : przed(rozmiar), po(rozmiar) {}
 };
 
-// Funkcja do generowania losowych wartości double
-double losowaWartosc() {
-    return rand() / (double(RAND_MAX) + 1) * 100;
-}
-
-// Klasa Kalkulator
+// Szablon klasy Kalkulator
 template <typename T>
 class Kalkulator {
 public:
     static void testtStudenta(
-        typename Konten<pomiary<T>>::iterator &min_para,
-        typename Konten<pomiary<T>>::iterator poczatek,
-        typename Konten<pomiary<T>>::iterator koniec
-    ) {
-        double min_T = std::numeric_limits<double>::max();
+        typename Konten<pomiary<T>>::iterator& pierwszy,
+        typename Konten<pomiary<T>>::iterator& drugi) {
+        
+        double min_t_wartosc = std::numeric_limits<double>::max();
+        typename Konten<pomiary<T>>::iterator najlepszy_przed, najlepszy_po;
 
-        for (typename Konten<pomiary<T>>::iterator it = poczatek; it != koniec; ++it) {
-            pomiary<T>& pomiar = *it;
-            int n = pomiar.przed.rozmiar();
-            if (n <= 1) continue; // Unikamy dzielenia przez zero
+        for (typename Konten<pomiary<T>>::iterator it = pierwszy; it != drugi; ++it) {
+            pomiary<T>& para_pomiarow = *it;
 
-            double srednia_D = 0;
-            for (int j = 0; j < n; ++j) {
-                srednia_D += (pomiar.przed[j] - pomiar.po[j]);
-            }
-            srednia_D /= n;
+            double suma_przed = 0.0, suma_po = 0.0;
+            int n_przed = para_pomiarow.przed.rozmiar();
+            int n_po = para_pomiarow.po.rozmiar();
 
-            double S_kwadrat = 0;
-            for (int j = 0; j < n; ++j) {
-                double roznica = (pomiar.przed[j] - pomiar.po[j]) - srednia_D;
-                S_kwadrat += roznica * roznica;
-            }
-            double S = std::sqrt(S_kwadrat / (n - 1));
-            double T = srednia_D / (S / std::sqrt(n));
+            for (int i = 0; i < n_przed; ++i) suma_przed += para_pomiarow.przed[i];
+            for (int i = 0; i < n_po; ++i) suma_po += para_pomiarow.po[i];
 
-            if (std::abs(T) < min_T) {
-                min_T = std::abs(T);
-                min_para = it;
+            double srednia_przed = suma_przed / n_przed;
+            double srednia_po = suma_po / n_po;
+
+            double wariancja_przed = 0.0, wariancja_po = 0.0;
+
+            for (int i = 0; i < n_przed; ++i) wariancja_przed += pow(para_pomiarow.przed[i] - srednia_przed, 2);
+            for (int i = 0; i < n_po; ++i) wariancja_po += pow(para_pomiarow.po[i] - srednia_po, 2);
+
+            wariancja_przed /= n_przed;
+            wariancja_po /= n_po;
+
+            double t_wartosc = abs(srednia_przed - srednia_po) /
+                               sqrt((wariancja_przed / n_przed) + (wariancja_po / n_po));
+
+            if (t_wartosc < min_t_wartosc) {
+                min_t_wartosc = t_wartosc;
+                najlepszy_przed = it;
+                najlepszy_po = it;
             }
         }
+
+        pierwszy = najlepszy_przed;
+        drugi = najlepszy_po;
     }
 };
+
+// Funkcja do generowania losowych wartości
+double generuj_losowa_liczbe(double min, double max) {
+    return min + static_cast<double>(rand()) / RAND_MAX * (max - min);
+}
 
 int main() {
     srand(static_cast<unsigned>(time(0)));
 
-    // Tworzymy kontener typu Konten przechowujący pomiary<double>
-    Konten<pomiary<double>> pomiaryKontener(10);
+    int m = 6 + rand() % 5;  // 5 < m < 10
+    Konten<pomiary<double>> kontener_pomiarow(m);
 
-    // Generowanie par serii wartości losowych i dodawanie ich do kontenera
-    for (int i = 0; i < 7; ++i) {
-        int dlugosc_serii = 5 + rand() % 5;
-        pomiary<double> seria(dlugosc_serii);
+    for (int i = 0; i < m; ++i) {
+        int n = 6 + rand() % 5;  // 5 < n < 10
+        pomiary<double> para_pomiarow(n);
 
-        for (int j = 0; j < dlugosc_serii; ++j) {
-            seria.przed.dodaj(losowaWartosc());
-            seria.po.dodaj(losowaWartosc());
-        }
+        for (int j = 0; j < n; ++j) para_pomiarow.przed.dodaj(generuj_losowa_liczbe(0, 100));
+        for (int j = 0; j < n; ++j) para_pomiarow.po.dodaj(generuj_losowa_liczbe(0, 100));
 
-        pomiaryKontener.dodaj(seria);
+        kontener_pomiarow.dodaj(para_pomiarow);
     }
 
-    // Tworzenie obiektu Kalkulator i wywołanie metody testtStudenta
-    auto poczatek = pomiaryKontener.poczatek();
-    auto koniec = pomiaryKontener.koniec();
-    auto min_para = poczatek;
+    typename Konten<pomiary<double>>::iterator pierwszy = kontener_pomiarow.poczatek();
+    typename Konten<pomiary<double>>::iterator drugi = kontener_pomiarow.koniec();
 
-    Kalkulator<double>::testtStudenta(min_para, poczatek, koniec);
+    Kalkulator<double>::testtStudenta(pierwszy, drugi);
 
-    // Wyświetlanie wyników
-    cout << "Para serii o najniższej wartości T: " << endl;
-    pomiary<double>& wynik = *min_para;
-    cout << "Przed: ";
-    for (int i = 0; i < wynik.przed.rozmiar(); ++i) {
-        cout << wynik.przed[i] << " ";
-    }
-    cout << "\nPo: ";
-    for (int i = 0; i < wynik.po.rozmiar(); ++i) {
-        cout << wynik.po[i] << " ";
-    }
-    cout << endl;
-
+    cout << "Najlepsza para pomiarow z minimalna wartoscia T znaleziona." << endl;
+    
     return 0;
 }
