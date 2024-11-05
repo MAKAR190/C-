@@ -1,3 +1,4 @@
+#include <iostream>
 #include <cmath>
 #include <cstdlib>
 #include <ctime>
@@ -9,57 +10,57 @@ using namespace std;
 // Kontener klasy Konten
 template <typename T>
 class Konten {
-    T* data;
-    int capacity;
-    int top;
+    T* dane;
+    int pojemnosc;
+    int szczyt;
 public:
-    Konten(int max_size) : capacity(max_size), top(0) {
-        data = new T[capacity];
+    Konten(int maks_rozmiar) : pojemnosc(maks_rozmiar), szczyt(0) {
+        dane = new T[pojemnosc];
     }
 
     ~Konten() {
-        delete[] data;
+        delete[] dane;
     }
 
-    void push(T value) {
-        assert(top < capacity);
-        data[top++] = value;
+    void dodaj(T wartosc) {
+        assert(szczyt < pojemnosc);
+        dane[szczyt++] = wartosc;
     }
 
-    T pop() {
-        assert(top > 0); 
-        return data[--top];
+    T usun() {
+        assert(szczyt > 0); 
+        return dane[--szczyt];
     }
 
-    int size() const { return top; }
+    int rozmiar() const { return szczyt; }
 
-    T& operator[](int index) {
-        assert(index < top);
-        return data[index];
+    T& operator[](int indeks) {
+        assert(indeks < szczyt);
+        return dane[indeks];
     }
 
     class iterator {
         Konten& kontener;
-        int index;
+        int indeks;
     public:
-        iterator(Konten& k, int start_index = 0) : kontener(k), index(start_index) {}
+        iterator(Konten& k, int start_indeks = 0) : kontener(k), indeks(start_indeks) {}
 
         iterator& operator++() {
-            ++index;
+            ++indeks;
             return *this;
         }
 
         T& operator*() const {
-            return kontener.data[index];
+            return kontener.dane[indeks];
         }
 
-        bool operator!=(const iterator& other) const {
-            return index != other.index;
+        bool operator!=(const iterator& inny) const {
+            return indeks != inny.indeks;
         }
     };
 
-    iterator begin() { return iterator(*this, 0); }
-    iterator end() { return iterator(*this, top); }
+    iterator poczatek() { return iterator(*this, 0); }
+    iterator koniec() { return iterator(*this, szczyt); }
 };
 
 // Klasa pomiary, przechowująca przed i po pomiary
@@ -69,11 +70,11 @@ public:
     Konten<T> przed;
     Konten<T> po;
 
-    pomiary(int size) : przed(size), po(size) {}
+    pomiary(int rozmiar) : przed(rozmiar), po(rozmiar) {}
 };
 
 // Funkcja do generowania losowych wartości double
-double randdouble() {
+double losowaWartosc() {
     return rand() / (double(RAND_MAX) + 1) * 100;
 }
 
@@ -82,37 +83,36 @@ template <typename T>
 class Kalkulator {
 public:
     static void testtStudenta(
-        typename Konten<pomiary<T>>::iterator &start,
-        typename Konten<pomiary<T>>::iterator &end
+        typename Konten<pomiary<T>>::iterator &min_para,
+        typename Konten<pomiary<T>>::iterator poczatek,
+        typename Konten<pomiary<T>>::iterator koniec
     ) {
-        typename Konten<pomiary<T>>::iterator min_pair = start;
         double min_T = std::numeric_limits<double>::max();
 
-        for (int i = 0; start != end; ++start, ++i) {
-            pomiary<T>& pom = *start;
-            int n = pom.przed.size();
-            
-            double D_mean = 0;
-            for (int j = 0; j < n; ++j) {
-                D_mean += (pom.przed[j] - pom.po[j]);
-            }
-            D_mean /= n;
+        for (typename Konten<pomiary<T>>::iterator it = poczatek; it != koniec; ++it) {
+            pomiary<T>& pomiar = *it;
+            int n = pomiar.przed.rozmiar();
+            if (n <= 1) continue; // Unikamy dzielenia przez zero
 
-            double S_squared = 0;
+            double srednia_D = 0;
             for (int j = 0; j < n; ++j) {
-                double diff = (pom.przed[j] - pom.po[j]) - D_mean;
-                S_squared += diff * diff;
+                srednia_D += (pomiar.przed[j] - pomiar.po[j]);
             }
-            double S = std::sqrt(S_squared / (n - 1));
-            double T = D_mean / (S / std::sqrt(n));
+            srednia_D /= n;
+
+            double S_kwadrat = 0;
+            for (int j = 0; j < n; ++j) {
+                double roznica = (pomiar.przed[j] - pomiar.po[j]) - srednia_D;
+                S_kwadrat += roznica * roznica;
+            }
+            double S = std::sqrt(S_kwadrat / (n - 1));
+            double T = srednia_D / (S / std::sqrt(n));
 
             if (std::abs(T) < min_T) {
                 min_T = std::abs(T);
-                min_pair = start;
+                min_para = it;
             }
         }
-
-        start = min_pair;
     }
 };
 
@@ -120,37 +120,38 @@ int main() {
     srand(static_cast<unsigned>(time(0)));
 
     // Tworzymy kontener typu Konten przechowujący pomiary<double>
-    Konten<pomiary<double>> measurements(10);
+    Konten<pomiary<double>> pomiaryKontener(10);
 
     // Generowanie par serii wartości losowych i dodawanie ich do kontenera
     for (int i = 0; i < 7; ++i) {
-        int series_length = 5 + rand() % 5;
-        pomiary<double> series(series_length);
+        int dlugosc_serii = 5 + rand() % 5;
+        pomiary<double> seria(dlugosc_serii);
 
-        for (int j = 0; j < series_length; ++j) {
-            series.przed.push(randdouble());
-            series.po.push(randdouble());
+        for (int j = 0; j < dlugosc_serii; ++j) {
+            seria.przed.dodaj(losowaWartosc());
+            seria.po.dodaj(losowaWartosc());
         }
 
-        measurements.push(series);
+        pomiaryKontener.dodaj(seria);
     }
 
     // Tworzenie obiektu Kalkulator i wywołanie metody testtStudenta
-    auto start = measurements.begin();
-    auto end = measurements.end();
+    auto poczatek = pomiaryKontener.poczatek();
+    auto koniec = pomiaryKontener.koniec();
+    auto min_para = poczatek;
 
-    Kalkulator<double>::testtStudenta(start, end);
+    Kalkulator<double>::testtStudenta(min_para, poczatek, koniec);
 
     // Wyświetlanie wyników
     cout << "Para serii o najniższej wartości T: " << endl;
-    pomiary<double>& result = *start;
+    pomiary<double>& wynik = *min_para;
     cout << "Przed: ";
-    for (int i = 0; i < result.przed.size(); ++i) {
-        cout << result.przed[i] << " ";
+    for (int i = 0; i < wynik.przed.rozmiar(); ++i) {
+        cout << wynik.przed[i] << " ";
     }
     cout << "\nPo: ";
-    for (int i = 0; i < result.po.size(); ++i) {
-        cout << result.po[i] << " ";
+    for (int i = 0; i < wynik.po.rozmiar(); ++i) {
+        cout << wynik.po[i] << " ";
     }
     cout << endl;
 
