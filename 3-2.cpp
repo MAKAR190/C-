@@ -15,6 +15,10 @@ class Konten {
     int szczyt;
 
 public:
+    // Konstruktor domyślny
+    Konten() : dane(nullptr), pojemnosc(0), szczyt(0) {}
+
+    // Konstruktor z parametrem maksymalnego rozmiaru
     Konten(int maks_rozmiar) : pojemnosc(maks_rozmiar), szczyt(0) {
         dane = new T[pojemnosc];
     }
@@ -114,6 +118,9 @@ class pomiary {
 public:
     Konten<T> przed;
     Konten<T> po;
+
+    // Konstruktor domyślny
+    pomiary() {}
 
     pomiary(int rozmiar) : przed(rozmiar), po(rozmiar) {}
 };
