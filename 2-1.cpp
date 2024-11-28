@@ -1,100 +1,41 @@
-#include <iostream>
-#include <fstream>
-#include <stack>
-#include <string>
-#include <stdexcept>
-#include <algorithm>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-std::string trim(const std::string& str) {
-    size_t first = str.find_first_not_of(' ');
-    if (first == std::string::npos) return "";
-    size_t last = str.find_last_not_of(' ');
-    return str.substr(first, (last - first + 1));
-}
-
-void processMathMLLine(const std::string& line, int lineNumber, std::stack<std::string>& tagStack) {
-    std::string trimmedLine = trim(line);
-
-    if (trimmedLine.empty()) return;
-
-    size_t openTagsCount = 0;
-    size_t closeTagsCount = 0;
-
-    if (trimmedLine.find("<math") != std::string::npos) {
-        openTagsCount++;
-        tagStack.push("math");
-    }
-    if (trimmedLine.find("</math>") != std::string::npos) {
-        closeTagsCount++;
-        if (tagStack.empty() || tagStack.top() != "math") {
-            throw std::runtime_error("Blad: Nieodpowiadajacy </math> w linijce " + std::to_string(lineNumber));
-        }
-        tagStack.pop();
+int main(int argc, char *argv[]) {
+    // Sprawdzamy, czy program otrzymał dokładnie 3 argumenty
+    if (argc != 4) {
+        printf("Błąd! Program wymaga trzech argumentów: nazwa_uzytkownika, haslo, grupa.\n");
+        return 1;
     }
 
-    const char* tags[] = { "msup", "mi", "mo", "mn" };
-    for (const char* tag : tags) {
-        std::string openTag = "<" + std::string(tag) + ">";
-        std::string closeTag = "</" + std::string(tag) + ">";
+    // Przypisanie argumentów do zmiennych
+    char *nazwa_uzytkownika = argv[1];
+    char *haslo = argv[2];
+    char *grupa = argv[3];
 
-        if (trimmedLine.find(openTag) != std::string::npos) {
-            openTagsCount++;
-            tagStack.push(tag);
-        }
-        if (trimmedLine.find(closeTag) != std::string::npos) {
-            closeTagsCount++;
-            if (tagStack.empty() || tagStack.top() != tag) {
-                throw std::runtime_error("Blad: Nieodpowiadajacy </" + std::string(tag) + "> w linijce " + std::to_string(lineNumber));
-            }
-            tagStack.pop();
-        }
+    // Tworzymy polecenie do dodania użytkownika
+    char command[256];
+    snprintf(command, sizeof(command), "sudo useradd -m -G %s %s", grupa, nazwa_uzytkownika);
+
+    // Wywołanie polecenia useradd
+    int result = system(command);
+    if (result != 0) {
+        printf("Błąd podczas dodawania użytkownika %s do grupy %s.\n", nazwa_uzytkownika, grupa);
+        return 1;
     }
 
-    if (openTagsCount > 1 || closeTagsCount > 1) {
-        throw std::runtime_error("Blad: Wiecej niz jeden tag w linijce " + std::to_string(lineNumber));
-    }
-}
+    // Tworzymy polecenie do ustawienia hasła użytkownika
+    snprintf(command, sizeof(command), "echo '%s:%s' | sudo chpasswd", nazwa_uzytkownika, haslo);
 
-void validateMathMLFile(const std::string& filename) {
-    std::ifstream file(filename);
-    if (!file) {
-        throw std::runtime_error("Nie mozna otworzyc pliku: " + filename);
-    }
-
-    std::string line;
-    std::stack<std::string> tagStack;
-    int lineNumber = 0;
-
-    while (std::getline(file, line)) {
-        ++lineNumber;
-        try {
-            processMathMLLine(line, lineNumber, tagStack);
-        }
-        catch (const std::exception& e) {
-            std::cerr << "Blad w linijce " << lineNumber << ": " << e.what() << std::endl;
-            return;
-        }
+    // Wywołanie polecenia chpasswd
+    result = system(command);
+    if (result != 0) {
+        printf("Błąd podczas ustawiania hasła dla użytkownika %s.\n", nazwa_uzytkownika);
+        return 1;
     }
 
-    if (!tagStack.empty()) {
-        std::cerr << "Blad: Pozostaly otwarte tagi w pliku." << std::endl;
-        while (!tagStack.empty()) {
-            std::cerr << "Nie zamkniety tag: <" << tagStack.top() << ">" << std::endl;
-            tagStack.pop();
-        }
-    }
-    else {
-        std::cout << "Walidacja MathML zakonczona pomyslnie." << std::endl;
-    }
-}
-
-int main() {
-    try {
-        validateMathMLFile("mathml_input.txt");
-    }
-    catch (const std::exception& e) {
-        std::cerr << "Blad: " << e.what() << std::endl;
-    }
-
+    // Informujemy użytkownika o sukcesie
+    printf("Użytkownik %s został pomyślnie dodany do systemu oraz przypisany do grupy %s.\n", nazwa_uzytkownika, grupa);
     return 0;
 }
